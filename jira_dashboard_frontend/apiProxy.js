@@ -5,7 +5,11 @@
 // This file will be conditionally imported/run via 'react-scripts' setupProxy.js, and is for local dev use.
 // On production, a similar pattern must exist on the production backend/server/api handler.
 //
+// NOTE: This file must be at the project root (not in src/)!
+
+const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));  // Polyfill for fetch
 
 module.exports = function(app) {
   // Proxy POST /jira-authenticate to the real Jira API using provided domain and credentials in body
