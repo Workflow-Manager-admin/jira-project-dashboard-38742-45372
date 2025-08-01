@@ -25,33 +25,34 @@ function LoginForm({ onLoginSuccess }) {
       setLoading(false);
       return;
     }
-    // Jira basic auth
-    const basicAuth = 'Basic ' + btoa(`${email}:${apiToken}`);
-    const jiraDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+    // Use backend proxy to avoid CORS and secure credential handling
     try {
-      const resp = await fetch(`https://${jiraDomain}/rest/api/3/myself`, {
-        headers: {
-          'Authorization': basicAuth,
-          'Accept': 'application/json',
-        }
+      const resp = await fetch('/jira-authenticate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, domain, apiToken }),
       });
+      let body, userJson = undefined;
+      try { body = await resp.json(); } catch { body = {}; }
       if (!resp.ok) {
-        throw new Error(
-          resp.status === 401
-            ? 'Invalid credentials. Please check your email, domain, and API token.'
-            : `Authentication failed. (Status ${resp.status})`
-        );
+        // Show precise message if available
+        setError(body && body.error
+          ? body.error
+          : `Network or authentication error (status ${resp.status}).`);
+        setLoading(false);
+        return;
       }
-      const userJson = await resp.json();
+      userJson = body.myself;
       onLoginSuccess({
         email,
-        domain: jiraDomain,
+        domain: domain.replace(/^https?:\/\//, '').replace(/\/$/, ''),
         apiToken,
-        authHeader: basicAuth,
+        authHeader: 'Basic ' + btoa(`${email}:${apiToken}`),
         myself: userJson
       });
     } catch (err) {
-      setError(err.message || 'Unable to connect. Please check your domain and network.');
+      setError('Failed to connect to server. Please check your network or try again.');
     }
     setLoading(false);
   }
